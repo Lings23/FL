@@ -1,0 +1,22 @@
+# Flower Framework
+flwr[simulation]>=1.14.0
+flwr-datasets[vision]>=0.4.0
+
+# PyTorch
+torch==2.2.1
+torchvision==0.17.1
+
+# Data Science
+numpy==1.26.4
+scikit-learn==1.6.1
+matplotlib
+pandas
+seaborn
+
+# Configuration and Logging
+PyYAML>=6.0
+pyyaml-include
+loguru>=0.7.3
+
+# Optional: Weights & Biases for experiment tracking
+# wandb==0.19.9

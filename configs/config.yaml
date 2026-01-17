@@ -1,0 +1,30 @@
+# 联邦学习配置文件
+
+server:
+  strategy: FedAvg  # 聚合策略: FedAvg, FedMedian, FedTrimmedMean
+  fraction_fit: 1.0  # 每轮参与训练的客户端比例
+  fraction_eval: 1.0  # 每轮参与评估的客户端比例
+  num_rounds: 20  # 联邦学习总轮数
+  batch_size: 64  # 服务器端批量大小
+
+client:
+  num_clients: 10  # 客户端总数
+  batch_size: 64  # 客户端批量大小
+  local_epochs: 3  # 本地训练轮数
+
+model:
+  name: MNIST  # 模型名称: MNIST, FMNIST, CIFAR10
+  learning_rate: 0.001  # 学习率
+
+general:
+  random_seed: 42  # 随机种子
+
+backend:
+  client_resources:
+    num_cpus: 2.0  # 每个客户端的CPU资源
+    num_gpus: 0.0  # 每个客户端的GPU资源
+
+# 数据分区配置
+data:
+  partitioning: iid  # 数据分区方式: iid (独立同分布) 或 non_iid (非独立同分布)
+  alpha: 0.5  # Dirichlet分布参数 (仅用于non_iid)

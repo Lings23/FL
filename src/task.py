@@ -205,28 +205,15 @@ def create_data_loaders(client_data, client_targets, batch_size: int, train_spli
         train_split: 训练集比例
         
     Returns:
-    data_len = len(client_data)
-    if data_len < 2:
-        raise ValueError(
-            f"client_data must contain at least 2 samples to create train and validation sets, got {data_len}."
-        )
-    num_train = int(data_len * train_split)
-    # 确保训练集和验证集都至少有1个样本
-    num_train = max(1, min(num_train, data_len - 1))
+        (train_loader, val_loader): 训练和验证数据加载器
+    """
+    # 分割训练集和验证集
     num_train = int(len(client_data) * train_split)
     # 确保训练集和验证集都至少有1个样本
     num_train = max(1, min(num_train, len(client_data) - 1))
-        if isinstance(client_data, np.ndarray):
-            # 已是NumPy数组：先复制以确保可写，再使用from_numpy避免多余拷贝
-            client_data = torch.from_numpy(client_data.copy()).float()
-        else:
-            # 其他类型（如列表）：直接构建Tensor
-            client_data = torch.tensor(client_data, dtype=torch.float32)
-    if not isinstance(client_targets, torch.Tensor):
-        if isinstance(client_targets, np.ndarray):
-            client_targets = torch.from_numpy(client_targets.copy()).long()
-        else:
-            client_targets = torch.tensor(client_targets, dtype=torch.long)
+    
+    # 转换为Tensor (确保从不可写的NumPy数组复制，避免PyTorch警告)
+    if not isinstance(client_data, torch.Tensor):
         client_data = torch.tensor(np.array(client_data).copy(), dtype=torch.float32)
     if not isinstance(client_targets, torch.Tensor):
         client_targets = torch.tensor(np.array(client_targets).copy(), dtype=torch.long)

@@ -50,6 +50,11 @@ class Config:
         """数据配置"""
         return self._config.get('data', {})
     
+    @property
+    def attack(self):
+        """攻击配置"""
+        return self._config.get('attack', {})
+    
     def __getitem__(self, key):
         """支持字典式访问"""
         return self._config[key]

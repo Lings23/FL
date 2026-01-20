@@ -1,0 +1,39 @@
+# 攻击测试配置示例 - 标签翻转攻击
+# 复制此内容到 configs/config.yaml 进行测试
+
+server:
+  strategy: FedAvg
+  fraction_fit: 1.0
+  fraction_eval: 1.0
+  num_rounds: 20
+  batch_size: 64
+
+client:
+  num_clients: 10
+  batch_size: 64
+  local_epochs: 3
+
+model:
+  name: MNIST
+  learning_rate: 0.001
+
+general:
+  random_seed: 42
+
+backend:
+  client_resources:
+    num_cpus: 2.0
+    num_gpus: 0.0
+
+data:
+  partitioning: iid
+  alpha: 0.5
+
+# 标签翻转攻击配置
+attack:
+  enabled: true
+  type: flip_labels
+  malicious_ratio: 0.2  # 20%的客户端进行攻击
+  malicious_clients: []  # 留空则自动根据比例随机选择
+  params:
+    num_classes: 10

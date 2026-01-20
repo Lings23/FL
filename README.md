@@ -1,6 +1,6 @@
 # 联邦学习简化项目
 
-基于 Flower 框架的联邦学习实现，支持 MNIST、Fashion-MNIST 和 CIFAR-10 数据集。
+基于 Flower 框架的联邦学习实现，支持 MNIST、Fashion-MNIST 和 CIFAR-10 数据集，并集成了多种攻击机制。
 
 ## 📋 项目概述
 
@@ -10,6 +10,7 @@
 - 多种聚合策略（FedAvg、FedMedian、FedTrimmedMean）
 - IID 和 Non-IID 数据分区
 - 基于 Flower 框架的仿真环境
+- **动态攻击注入系统**（支持6种攻击类型）
 
 ## 🗂️ 项目结构
 
@@ -23,6 +24,8 @@ FederatedLearning-Simple/
 │   ├── flower_client.py   # Flower客户端实现
 │   ├── client_app.py      # 客户端应用
 │   ├── server_app.py      # 服务器应用
+│   ├── attacks.py         # 攻击函数实现（新增）
+│   ├── attack_manager.py  # 攻击管理器（新增）
 │   └── strategies/        # 聚合策略
 │       ├── __init__.py
 │       └── fed_avg.py     # FedAvg、FedMedian、FedTrimmedMean
@@ -30,8 +33,12 @@ FederatedLearning-Simple/
 │   ├── run_simulation.py  # 运行联邦学习仿真
 │   └── partition_data.py  # 数据分区工具
 ├── configs/               # 配置文件
-│   └── config.yaml        # 主配置文件
+│   ├── config.yaml        # 主配置文件
+│   ├── config_attack_flip_labels.yaml    # 标签翻转攻击配置
+│   ├── config_attack_gaussian.yaml       # 高斯噪声攻击配置
+│   └── config_attack_flip_sign.yaml      # 符号翻转攻击配置
 ├── requirements.txt       # Python依赖
+├── ATTACK_CONFIG.md       # 攻击配置详细文档（新增）
 ├── .gitignore
 └── README.md
 ```
@@ -111,6 +118,18 @@ data:
   partitioning: iid         # 数据分区: iid 或 non_iid
   alpha: 0.5                # Dirichlet参数（仅用于non_iid）
 
+# 攻击配置（新增）
+attack:
+  enabled: false            # 是否启用攻击
+  type: null                # 攻击类型: flip_labels, gaussian_noise, flip_sign, scale, zero_gradient, random_update
+  malicious_ratio: 0.0      # 恶意客户端比例
+  malicious_clients: []     # 指定恶意客户端ID
+  params:                   # 攻击参数
+    num_classes: 10
+    mean: 0.0
+    std: 1.0
+    scale_factor: 10.0
+
 backend:
   client_resources:
     num_cpus: 2.0           # 每个客户端的CPU资源
@@ -135,6 +154,19 @@ backend:
 
 - **IID**: 独立同分布，数据随机均匀分配给客户端
 - **Non-IID**: 非独立同分布，使用 Dirichlet 分布模拟数据异构性
+
+### 4. 攻击系统（新增）
+
+支持6种攻击类型，通过配置文件动态加载：
+
+- **flip_labels**: 标签翻转攻击
+- **gaussian_noise**: 高斯噪声攻击
+- **flip_sign**: 符号翻转攻击（梯度反转）
+- **scale**: 梯度缩放攻击
+- **zero_gradient**: 零梯度攻击
+- **random_update**: 随机更新攻击
+
+详细使用说明请查看 [ATTACK_CONFIG.md](ATTACK_CONFIG.md)
 
 ## 📊 实验示例
 

@@ -118,7 +118,9 @@ def get_strategy() -> Strategy:
     test_loader = torch.utils.data.DataLoader(
         test_dataset, 
         batch_size=batch_size, 
-        shuffle=False
+        shuffle=False,
+        num_workers=0,
+        pin_memory=False
     )
     
     # 策略参数
@@ -127,7 +129,11 @@ def get_strategy() -> Strategy:
         'fraction_evaluate': config.server['fraction_eval'],
         'min_fit_clients': max(2, int(config.client['num_clients'] * config.server['fraction_fit'])),
         'min_evaluate_clients': max(2, int(config.client['num_clients'] * config.server['fraction_eval'])),
-        'min_available_clients': config.client['num_clients'],
+        # 设置可用客户端数：默认80%避免Ray资源限制导致死锁，可通过配置覆盖
+        'min_available_clients': config.server.get(
+            'min_available_clients',
+            max(2, int(config.client['num_clients'] * 0.8))
+        ),
         'initial_parameters': ndarrays_to_parameters(get_weights(model)),
         'on_fit_config_fn': get_fit_config_fn(),
         'evaluate_fn': get_evaluate_fn(model, test_loader),
@@ -173,8 +179,11 @@ def get_server_fn():
         # 创建策略
         strategy = get_strategy()
         
-        # 创建服务器配置
-        server_config = ServerConfig(num_rounds=config.server['num_rounds'])
+        # 创建服务器配置 (可选地从配置读取 round_timeout，避免无限等待)
+        server_config = ServerConfig(
+            num_rounds=config.server['num_rounds'],
+            round_timeout=config.server.get('round_timeout', None)
+        )
         
         # 返回 ServerAppComponents 对象
         return ServerAppComponents(

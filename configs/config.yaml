@@ -13,7 +13,7 @@ client:
   local_epochs: 3  # 本地训练轮数
 
 model:
-  name: MNIST  # 模型名称: MNIST, FMNIST, CIFAR10
+  name: CIFAR10  # 模型名称: MNIST, FMNIST, CIFAR10
   learning_rate: 0.001  # 学习率
 
 general:
@@ -26,5 +26,20 @@ backend:
 
 # 数据分区配置
 data:
-  partitioning: iid  # 数据分区方式: iid (独立同分布) 或 non_iid (非独立同分布)
+  partitioning: non_iid  # 数据分区方式: iid (独立同分布) 或 non_iid (非独立同分布)
   alpha: 0.5  # Dirichlet分布参数 (仅用于non_iid)
+
+# 攻击配置
+attack:
+  enabled: false  # 是否启用攻击
+  type: null  # 攻击类型: flip_labels, gaussian_noise, flip_sign, scale, zero_gradient, random_update
+  malicious_clients: []  # 恶意客户端ID列表，例如: [0, 2, 5]
+  malicious_ratio: 0.0  # 恶意客户端比例 (0.0-1.0)，如果指定了malicious_clients则忽略此项
+  params:  # 攻击参数
+    # 用于flip_labels攻击
+    num_classes: 10
+    # 用于gaussian_noise攻击
+    mean: 0.0
+    std: 1.0
+    # 用于scale攻击
+    scale_factor: 10.0

@@ -6,7 +6,7 @@ import os
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Tuple
+from typing import Tuple, Optional
 
 import torch
 import torch.nn as nn
@@ -18,7 +18,8 @@ from src.config import get_config
 from src.models import MODELS
 
 
-def train(model: nn.Module, train_loader: DataLoader, epochs: int, lr: float, device: str = 'cpu'):
+def train(model: nn.Module, train_loader: DataLoader, epochs: int, lr: float, 
+          device: str = 'cpu', attack_manager=None, client_id: int = None):
     """
     训练模型
     
@@ -28,11 +29,20 @@ def train(model: nn.Module, train_loader: DataLoader, epochs: int, lr: float, de
         epochs: 训练轮数
         lr: 学习率
         device: 设备 ('cpu' 或 'cuda')
+        attack_manager: 攻击管理器实例（可选）
+        client_id: 客户端ID（用于判断是否为恶意客户端）
     """
     model.to(device)
     model.train()
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    
+    # 判断是否为恶意客户端
+    is_malicious = False
+    if attack_manager is not None and client_id is not None:
+        is_malicious = attack_manager.is_malicious_client(client_id)
+        if is_malicious:
+            print(f"[Client {client_id}] Malicious client detected, will apply {attack_manager.attack_type} attack")
     
     for epoch in range(epochs):
         for images, labels in train_loader:
@@ -40,8 +50,20 @@ def train(model: nn.Module, train_loader: DataLoader, epochs: int, lr: float, de
             
             optimizer.zero_grad()
             outputs = model(images)
+            
+            # 如果是恶意客户端且攻击类型是标签翻转，则翻转标签
+            if is_malicious and attack_manager.attack_type == 'flip_labels':
+                # 从模型输出的维度推断类别数，而不是硬编码
+                num_classes = outputs.size(1)
+                labels = attack_manager.apply_attack(labels, num_classes=num_classes)
+            
             loss = criterion(outputs, labels)
             loss.backward()
+            
+            # 如果是恶意客户端且攻击类型是梯度相关攻击，则修改梯度
+            if is_malicious and attack_manager.attack_type in ['gaussian_noise', 'flip_sign', 'scale', 'zero_gradient', 'random_update']:
+                attack_manager.apply_attack(model.parameters())
+            
             optimizer.step()
 
 
@@ -183,20 +205,38 @@ def create_data_loaders(client_data, client_targets, batch_size: int, train_spli
         train_split: 训练集比例
         
     Returns:
-        (train_loader, val_loader): 训练和验证数据加载器
-    """
-    # 分割训练集和验证集
+    data_len = len(client_data)
+    if data_len < 2:
+        raise ValueError(
+            f"client_data must contain at least 2 samples to create train and validation sets, got {data_len}."
+        )
+    num_train = int(data_len * train_split)
+    # 确保训练集和验证集都至少有1个样本
+    num_train = max(1, min(num_train, data_len - 1))
     num_train = int(len(client_data) * train_split)
-    
-    # 转换为Tensor
-    if not isinstance(client_data, torch.Tensor):
-        client_data = torch.FloatTensor(client_data)
+    # 确保训练集和验证集都至少有1个样本
+    num_train = max(1, min(num_train, len(client_data) - 1))
+        if isinstance(client_data, np.ndarray):
+            # 已是NumPy数组：先复制以确保可写，再使用from_numpy避免多余拷贝
+            client_data = torch.from_numpy(client_data.copy()).float()
+        else:
+            # 其他类型（如列表）：直接构建Tensor
+            client_data = torch.tensor(client_data, dtype=torch.float32)
     if not isinstance(client_targets, torch.Tensor):
-        client_targets = torch.LongTensor(client_targets)
+        if isinstance(client_targets, np.ndarray):
+            client_targets = torch.from_numpy(client_targets.copy()).long()
+        else:
+            client_targets = torch.tensor(client_targets, dtype=torch.long)
+        client_data = torch.tensor(np.array(client_data).copy(), dtype=torch.float32)
+    if not isinstance(client_targets, torch.Tensor):
+        client_targets = torch.tensor(np.array(client_targets).copy(), dtype=torch.long)
     
-    # 确保数据维度正确 (添加通道维度如果需要)
-    if len(client_data.shape) == 3:  # (N, H, W)
+    # 确保数据维度正确
+    if len(client_data.shape) == 3:  # (N, H, W) - grayscale
         client_data = client_data.unsqueeze(1)  # (N, 1, H, W)
+    elif len(client_data.shape) == 4:  # (N, H, W, C) - RGB
+        # 转换从 (N, H, W, C) 到 (N, C, H, W)
+        client_data = client_data.permute(0, 3, 1, 2)
     
     # 归一化
     client_data = client_data.float() / 255.0
@@ -209,8 +249,22 @@ def create_data_loaders(client_data, client_targets, batch_size: int, train_spli
     train_dataset = TensorDataset(train_data, train_targets)
     val_dataset = TensorDataset(val_data, val_targets)
     
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    # 关键：num_workers=0 避免 Ray actor 中的多进程死锁
+    # drop_last=False 确保小数据集不会因为 batch_size 被跳过
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=batch_size, 
+        shuffle=True,
+        num_workers=0,
+        pin_memory=False
+    )
+    val_loader = DataLoader(
+        val_dataset, 
+        batch_size=batch_size, 
+        shuffle=False,
+        num_workers=0,
+        pin_memory=False
+    )
     
     return train_loader, val_loader
 

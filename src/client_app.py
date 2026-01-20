@@ -9,6 +9,7 @@ from src.flower_client import FlowerClient
 from src.models import MODELS, get_model
 from src.task import partition_data, load_datasets, create_data_loaders
 from src.config import get_config
+from src.attack_manager import create_attack_manager
 
 
 def get_client_fn():
@@ -31,6 +32,14 @@ def get_client_fn():
     alpha = config.data.get('alpha', 0.5)
     
     client_datasets = partition_data(train_dataset, num_clients, partition_type, alpha)
+    
+    # 创建攻击管理器（根据配置动态加载）
+    attack_config = config.attack
+    attack_manager = None
+    if attack_config.get('enabled', False):
+        attack_manager = create_attack_manager(attack_config)
+        attack_manager.set_malicious_clients_by_ratio(num_clients)
+        print(f"[AttackManager] Initialized with attack type: {attack_manager.attack_type}")
     
     def client_fn(context: Context) -> Client:
         """
@@ -58,12 +67,13 @@ def get_client_fn():
             batch_size
         )
         
-        # 创建客户端实例
+        # 创建客户端实例（传递攻击管理器）
         client_instance = FlowerClient(
             model=model,
             train_loader=train_loader,
             val_loader=val_loader,
-            client_id=partition_id
+            client_id=partition_id,
+            attack_manager=attack_manager
         )
         
         return client_instance.to_client()

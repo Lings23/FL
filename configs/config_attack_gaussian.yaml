@@ -1,0 +1,40 @@
+# 攻击测试配置示例 - 高斯噪声攻击
+# 复制此内容到 configs/config.yaml 进行测试
+
+server:
+  strategy: FedAvg
+  fraction_fit: 1.0
+  fraction_eval: 1.0
+  num_rounds: 20
+  batch_size: 64
+
+client:
+  num_clients: 10
+  batch_size: 64
+  local_epochs: 3
+
+model:
+  name: MNIST
+  learning_rate: 0.001
+
+general:
+  random_seed: 42
+
+backend:
+  client_resources:
+    num_cpus: 2.0
+    num_gpus: 0.0
+
+data:
+  partitioning: iid
+  alpha: 0.5
+
+# 高斯噪声攻击配置
+attack:
+  enabled: true
+  type: gaussian_noise
+  malicious_clients: [0, 2, 5]  # 指定客户端0、2、5为恶意客户端
+  malicious_ratio: 0.0  # 由于指定了具体客户端，此项被忽略
+  params:
+    mean: 0.0
+    std: 2.0  # 较大的标准差会产生更强的攻击效果

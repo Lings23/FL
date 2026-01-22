@@ -55,14 +55,64 @@ class CIFAR10Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.dropout(x)
         return self.fc2(x)
+#修改实现
+class CIFAR10NetV2(nn.Module):
+    def __init__(self):
+        super().__init__()
 
+        # Block 1: 32x32
+        self.conv1 = nn.Conv2d(3, 64, 3, padding=1)
+        self.gn1   = nn.GroupNorm(8, 64)
+        self.conv2 = nn.Conv2d(64, 64, 3, padding=1)
+        self.gn2   = nn.GroupNorm(8, 64)
+
+        # Block 2: 16x16
+        self.conv3 = nn.Conv2d(64, 128, 3, padding=1)
+        self.gn3   = nn.GroupNorm(8, 128)
+        self.conv4 = nn.Conv2d(128, 128, 3, padding=1)
+        self.gn4   = nn.GroupNorm(8, 128)
+
+        # Block 3: 8x8
+        self.conv5 = nn.Conv2d(128, 256, 3, padding=1)
+        self.gn5   = nn.GroupNorm(8, 256)
+        self.conv6 = nn.Conv2d(256, 256, 3, padding=1)
+        self.gn6   = nn.GroupNorm(8, 256)
+
+        self.pool = nn.MaxPool2d(2, 2)
+        self.dropout = nn.Dropout(0.3)
+
+        self.fc1 = nn.Linear(256 * 4 * 4, 512)
+        self.fc2 = nn.Linear(512, 10)
+
+    def forward(self, x):
+        x = F.relu(self.gn1(self.conv1(x)))
+        x = F.relu(self.gn2(self.conv2(x)))
+        x = self.pool(x)
+
+        x = F.relu(self.gn3(self.conv3(x)))
+        x = F.relu(self.gn4(self.conv4(x)))
+        x = self.pool(x)
+
+        x = F.relu(self.gn5(self.conv5(x)))
+        x = F.relu(self.gn6(self.conv6(x)))
+        x = self.pool(x)
+
+        x = self.dropout(x)
+        x = x.view(x.size(0), -1)
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        return self.fc2(x)
 
 # 模型配置字典
 MODELS = {
     'MNIST': {
         'model': MNISTNet(),
         'num_classes': 10,
-        'transforms': transforms.Compose([
+        'train_transforms': transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ]),
+        'test_transforms': transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ])
@@ -70,17 +120,33 @@ MODELS = {
     'FMNIST': {
         'model': MNISTNet(),
         'num_classes': 10,
-        'transforms': transforms.Compose([
+        'train_transforms': transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ]),
+        'test_transforms': transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ])
     },
     'CIFAR10': {
-        'model': CIFAR10Net(),
+        'model': CIFAR10NetV2(),
         'num_classes': 10,
-        'transforms': transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+        'train_transforms': transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            (0.4914, 0.4822, 0.4465),
+            (0.2023, 0.1994, 0.2010)
+            )
+        ]),
+        'test_transforms': transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            (0.4914, 0.4822, 0.4465),
+            (0.2023, 0.1994, 0.2010)
+            )
         ])
     }
 }

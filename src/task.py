@@ -114,17 +114,20 @@ def load_datasets(dataset_name: str, data_path: str = './datasets'):
     Returns:
         (train_dataset, test_dataset): 训练集和测试集
     """
-    transform = MODELS[dataset_name]['transforms']
-    
+    # Prefer explicit train/test transforms, fall back to legacy 'transforms' key
+    model_cfg = MODELS.get(dataset_name, {})
+    train_transform = model_cfg.get('train_transforms') or model_cfg.get('transforms')
+    test_transform = model_cfg.get('test_transforms') or model_cfg.get('transforms')
+
     if dataset_name == 'MNIST':
-        train_dataset = datasets.MNIST(data_path, train=True, download=True, transform=transform)
-        test_dataset = datasets.MNIST(data_path, train=False, download=True, transform=transform)
+        train_dataset = datasets.MNIST(data_path, train=True, download=True, transform=train_transform)
+        test_dataset = datasets.MNIST(data_path, train=False, download=True, transform=test_transform)
     elif dataset_name == 'FMNIST':
-        train_dataset = datasets.FashionMNIST(data_path, train=True, download=True, transform=transform)
-        test_dataset = datasets.FashionMNIST(data_path, train=False, download=True, transform=transform)
+        train_dataset = datasets.FashionMNIST(data_path, train=True, download=True, transform=train_transform)
+        test_dataset = datasets.FashionMNIST(data_path, train=False, download=True, transform=test_transform)
     elif dataset_name == 'CIFAR10':
-        train_dataset = datasets.CIFAR10(data_path, train=True, download=True, transform=transform)
-        test_dataset = datasets.CIFAR10(data_path, train=False, download=True, transform=transform)
+        train_dataset = datasets.CIFAR10(data_path, train=True, download=True, transform=train_transform)
+        test_dataset = datasets.CIFAR10(data_path, train=False, download=True, transform=test_transform)
     else:
         raise ValueError(f"不支持的数据集: {dataset_name}")
     

@@ -40,6 +40,12 @@ def train(model: nn.Module, train_loader: DataLoader, epochs: int, lr: float,
     model.train()
     criterion = nn.CrossEntropyLoss()
     
+    # 确保参数类型正确（防止YAML解析问题）
+    lr = float(lr)
+    weight_decay = float(weight_decay)
+    momentum = float(momentum)
+    epochs = int(epochs)
+    
     # 根据配置选择优化器
     if optimizer_type.lower() == 'sgd':
         optimizer = torch.optim.SGD(

@@ -86,6 +86,16 @@ A: 将model字段中的参数改为null
 Q: 为什么CIFAR10用SGD而不是Adam？
 A: CIFAR10模型大40倍，SGD泛化能力更强
 
+Q: 如何使用GPU加速？
+A: 修改backend.client_resources.num_gpus
+   - num_gpus: 0.1  # 10个客户端共享GPU（推荐）
+   - num_gpus: 1.0  # 单客户端独占GPU（串行）
+   T4 GPU (16GB) 建议使用 0.1-0.2
+
+Q: TypeError: '<=' not supported between instances of 'float' and 'str'
+A: ✓ 已修复！配置文件中的科学计数法已改为标准小数
+   详见: TYPE_ERROR_FIX.md
+
 ┌─────────────────────────────────────────────────────────────────────┐
 │                      重要文档                                         │
 └─────────────────────────────────────────────────────────────────────┘

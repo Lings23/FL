@@ -6,6 +6,7 @@ server:
   fraction_eval: 1.0
   num_rounds: 20
   batch_size: 64
+  min_available_clients: 5  # 最小可用客户端数 (确保足够客户端参与以稳定训练)
 
 client:
   num_clients: 10
@@ -64,7 +65,7 @@ model_configs:
   CIFAR10:
     optimizer: sgd
     learning_rate: 0.01
-    weight_decay: 5e-4
+    weight_decay: 0.0005  # 5e-4
     momentum: 0.9
     batch_size: 32
     local_epochs: 5

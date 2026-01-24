@@ -77,11 +77,11 @@ def get_fit_config_fn():
         model_config = config.get_model_config()
         
         return {
-            "lr": model_config.get('learning_rate', 0.001),
-            "local_epochs": model_config.get('local_epochs', config.client.get('local_epochs', 1)),
-            "weight_decay": model_config.get('weight_decay', 0.0),
-            "optimizer": model_config.get('optimizer', 'adam'),
-            "momentum": model_config.get('momentum', 0.9)
+            "lr": float(model_config.get('learning_rate', 0.001)),
+            "local_epochs": int(model_config.get('local_epochs', config.client.get('local_epochs', 1))),
+            "weight_decay": float(model_config.get('weight_decay', 0.0)),
+            "optimizer": str(model_config.get('optimizer', 'adam')),
+            "momentum": float(model_config.get('momentum', 0.9))
         }
     
     return fit_config
@@ -138,7 +138,7 @@ def get_strategy() -> Strategy:
         # 设置可用客户端数：默认80%避免Ray资源限制导致死锁，可通过配置覆盖
         'min_available_clients': config.server.get(
             'min_available_clients',
-            max(2, int(config.client['num_clients'] * 0.8))
+            max(2, int(config.client['num_clients'] *config.server['fraction_fit']))
         ),
         'initial_parameters': ndarrays_to_parameters(get_weights(model)),
         'on_fit_config_fn': get_fit_config_fn(),

@@ -6,6 +6,7 @@ server:
   fraction_eval: 1.0  # 每轮参与评估的客户端比例
   num_rounds: 50  # 联邦学习总轮数 (CIFAR10需要更多轮次)
   batch_size: 64  # 服务器端批量大小
+  min_available_clients: 5  # 最小可用客户端数 (确保足够客户端参与以稳定训练)
 
 client:
   num_clients: 10  # 客户端总数
@@ -15,7 +16,7 @@ client:
 model:
   name: CIFAR10  # 模型名称: MNIST, FMNIST, CIFAR10
   learning_rate: 0.01  # 学习率 (提高10倍以加速收敛)
-  weight_decay: 5e-4  # 权重衰减 (L2正则化，防止过拟合)
+  weight_decay: 0.0005  # 权重衰减 (L2正则化，防止过拟合) 原值5e-4
 
 general:
   random_seed: 42  # 随机种子

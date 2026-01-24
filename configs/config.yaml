@@ -14,8 +14,8 @@ server:
 
 client:
   num_clients: 10  # 客户端总数
-  batch_size: 64  # 客户端批量大小
-  local_epochs: 3  # 本地训练轮数
+  batch_size: 32  # 客户端批量大小（使用model_configs中CIFAR10的配置）
+  local_epochs: 5  # 本地训练轮数（使用model_configs中CIFAR10的配置）
 
 model:
   name: CIFAR10  # 模型名称: MNIST, FMNIST, CIFAR10

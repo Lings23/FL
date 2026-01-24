@@ -70,7 +70,13 @@ def train(model: nn.Module, train_loader: DataLoader, epochs: int, lr: float,
         if is_malicious:
             print(f"[Client {client_id}] Malicious client detected, will apply {attack_manager.attack_type} attack")
     
+    total_loss = 0.0
+    num_batches = 0
+    
     for epoch in range(epochs):
+        epoch_loss = 0.0
+        epoch_batches = 0
+        
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
             
@@ -91,6 +97,18 @@ def train(model: nn.Module, train_loader: DataLoader, epochs: int, lr: float,
                 attack_manager.apply_attack(model.parameters())
             
             optimizer.step()
+            
+            # 统计损失
+            epoch_loss += loss.item()
+            epoch_batches += 1
+        
+        total_loss += epoch_loss
+        num_batches += epoch_batches
+        
+        # 打印训练进度
+        if client_id is not None and (epoch == 0 or epoch == epochs - 1):
+            avg_epoch_loss = epoch_loss / max(epoch_batches, 1)
+            print(f"[Client {client_id}] Epoch {epoch+1}/{epochs}, Loss: {avg_epoch_loss:.4f}")
 
 
 def test(model: nn.Module, test_loader: DataLoader, device: str = 'cpu') -> Tuple[float, float]:

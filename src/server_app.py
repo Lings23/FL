@@ -43,11 +43,14 @@ def get_evaluate_fn(model, test_loader):
         
         # 在测试集上评估
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # 确保模型在正确设备上
+        model.to(device)
         loss, accuracy = test(model, test_loader, device)
         
         print(f"\n[服务器评估 - 轮次 {server_round}]")
         print(f"  损失: {loss:.4f}")
         print(f"  准确率: {accuracy:.2f}%")
+        print(f"  设备: {device}")
         
         return loss, {"centralized_accuracy": accuracy}
     
@@ -132,18 +135,18 @@ def get_strategy() -> Strategy:
     # 策略参数
     strategy_kwargs = {
         'fraction_fit': config.server['fraction_fit'],
-        'fraction_evaluate': config.server['fraction_eval'],
+        'fraction_evaluate': 0.0,  # 禁用客户端评估，只使用服务器评估
         'min_fit_clients': max(2, int(config.client['num_clients'] * config.server['fraction_fit'])),
-        'min_evaluate_clients': max(2, int(config.client['num_clients'] * config.server['fraction_eval'])),
-        # 设置可用客户端数：默认80%避免Ray资源限制导致死锁，可通过配置覆盖
+        'min_evaluate_clients': 0,  # 不需要客户端评估
+        # 设置可用客户端数：降低到30%以支持更好的并行执行
         'min_available_clients': config.server.get(
             'min_available_clients',
-            max(2, int(config.client['num_clients'] *config.server['fraction_fit']))
+            max(2, int(config.client['num_clients'] * 0.3))
         ),
         'initial_parameters': ndarrays_to_parameters(get_weights(model)),
         'on_fit_config_fn': get_fit_config_fn(),
         'evaluate_fn': get_evaluate_fn(model, test_loader),
-        'evaluate_metrics_aggregation_fn': weighted_average,
+        # 'evaluate_metrics_aggregation_fn': weighted_average,  # 禁用客户端评估聚合
         'model': model,
         'save_path': 'outputs'
     }

@@ -1,0 +1,46 @@
+# 针对CIFAR-10优化的联邦学习配置文件
+
+server:
+  strategy: FedAvg  # 聚合策略: FedAvg, FedMedian, FedTrimmedMean
+  fraction_fit: 1.0  # 每轮参与训练的客户端比例
+  fraction_eval: 1.0  # 每轮参与评估的客户端比例
+  num_rounds: 50  # 联邦学习总轮数 (CIFAR10需要更多轮次)
+  batch_size: 64  # 服务器端批量大小
+
+client:
+  num_clients: 10  # 客户端总数
+  batch_size: 32  # 客户端批量大小 (较小的batch size提高梯度质量)
+  local_epochs: 5  # 本地训练轮数 (增加以充分训练)
+
+model:
+  name: CIFAR10  # 模型名称: MNIST, FMNIST, CIFAR10
+  learning_rate: 0.01  # 学习率 (提高10倍以加速收敛)
+  weight_decay: 5e-4  # 权重衰减 (L2正则化，防止过拟合)
+
+general:
+  random_seed: 42  # 随机种子
+
+backend:
+  client_resources:
+    num_cpus: 2.0  # 每个客户端的CPU资源
+    num_gpus: 0.0  # 每个客户端的GPU资源
+
+# 数据分区配置
+data:
+  partitioning: iid  # 数据分区方式: iid (独立同分布) 或 non_iid (非独立同分布)
+  alpha: 0.5  # Dirichlet分布参数 (仅用于non_iid)
+
+# 攻击配置
+attack:
+  enabled: false  # 是否启用攻击
+  type: null  # 攻击类型: flip_labels, gaussian_noise, flip_sign, scale, zero_gradient, random_update
+  malicious_clients: []  # 恶意客户端ID列表，例如: [0, 2, 5]
+  malicious_ratio: 0.0  # 恶意客户端比例 (0.0-1.0)，如果指定了malicious_clients则忽略此项
+  params:  # 攻击参数
+    # 用于flip_labels攻击
+    num_classes: 10
+    # 用于gaussian_noise攻击
+    mean: 0.0
+    std: 1.0
+    # 用于scale攻击
+    scale_factor: 10.0

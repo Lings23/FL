@@ -73,9 +73,15 @@ def get_fit_config_fn():
         Returns:
             config_dict: 配置字典
         """
+        # 获取模型特定配置
+        model_config = config.get_model_config()
+        
         return {
-            "lr": config.model['learning_rate'],
-            "local_epochs": config.client['local_epochs']
+            "lr": model_config.get('learning_rate', 0.001),
+            "local_epochs": model_config.get('local_epochs', config.client.get('local_epochs', 1)),
+            "weight_decay": model_config.get('weight_decay', 0.0),
+            "optimizer": model_config.get('optimizer', 'adam'),
+            "momentum": model_config.get('momentum', 0.9)
         }
     
     return fit_config

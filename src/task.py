@@ -19,7 +19,8 @@ from src.models import MODELS
 
 
 def train(model: nn.Module, train_loader: DataLoader, epochs: int, lr: float, 
-          device: str = 'cpu', attack_manager=None, client_id: int = None):
+          device: str = 'cpu', attack_manager=None, client_id: int = None, 
+          weight_decay: float = 0.0, optimizer_type: str = 'adam', momentum: float = 0.9):
     """
     训练模型
     
@@ -31,11 +32,30 @@ def train(model: nn.Module, train_loader: DataLoader, epochs: int, lr: float,
         device: 设备 ('cpu' 或 'cuda')
         attack_manager: 攻击管理器实例（可选）
         client_id: 客户端ID（用于判断是否为恶意客户端）
+        weight_decay: 权重衰减系数（L2正则化）
+        optimizer_type: 优化器类型 ('sgd' 或 'adam')
+        momentum: SGD动量参数
     """
     model.to(device)
     model.train()
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    
+    # 根据配置选择优化器
+    if optimizer_type.lower() == 'sgd':
+        optimizer = torch.optim.SGD(
+            model.parameters(), 
+            lr=lr, 
+            momentum=momentum, 
+            weight_decay=weight_decay
+        )
+    elif optimizer_type.lower() == 'adam':
+        optimizer = torch.optim.Adam(
+            model.parameters(), 
+            lr=lr, 
+            weight_decay=weight_decay
+        )
+    else:
+        raise ValueError(f"不支持的优化器类型: {optimizer_type}。支持: 'sgd', 'adam'")
     
     # 判断是否为恶意客户端
     is_malicious = False

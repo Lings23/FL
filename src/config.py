@@ -36,6 +36,45 @@ class Config:
         return self._config.get('model', {})
     
     @property
+    def model_configs(self):
+        """模型特定配置"""
+        return self._config.get('model_configs', {})
+    
+    def get_model_config(self, model_name: Optional[str] = None):
+        """
+        获取模型配置，支持模型特定配置覆盖
+        
+        Args:
+            model_name: 模型名称，如果为None则使用self.model['name']
+        
+        Returns:
+            合并后的模型配置字典
+        """
+        if model_name is None:
+            model_name = self.model.get('name', 'MNIST')
+        
+        # 基础配置
+        base_config = self.model.copy()
+        
+        # 获取模型特定配置
+        model_specific = self.model_configs.get(model_name, {})
+        
+        # 合并配置：模型特定配置覆盖基础配置中的None值
+        merged_config = {}
+        for key, value in base_config.items():
+            if value is None and key in model_specific:
+                merged_config[key] = model_specific[key]
+            else:
+                merged_config[key] = value
+        
+        # 添加模型特定配置中的其他字段
+        for key, value in model_specific.items():
+            if key not in merged_config:
+                merged_config[key] = value
+        
+        return merged_config
+    
+    @property
     def general(self):
         """通用配置"""
         return self._config.get('general', {})

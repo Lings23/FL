@@ -55,10 +55,14 @@ class FlowerClient(NumPyClient):
         # 从配置中获取训练参数
         lr = config.get("lr", 0.001)
         local_epochs = config.get("local_epochs", 1)
+        weight_decay = config.get("weight_decay", 0.0)
+        optimizer_type = config.get("optimizer", "adam")
+        momentum = config.get("momentum", 0.9)
         
         # 本地训练（传递攻击管理器和客户端ID）
         train(self.model, self.train_loader, local_epochs, lr, self.device, 
-              attack_manager=self.attack_manager, client_id=self.client_id)
+              attack_manager=self.attack_manager, client_id=self.client_id,
+              weight_decay=weight_decay, optimizer_type=optimizer_type, momentum=momentum)
         print(f"[Client {self.client_id}] fit END", flush=True)
 
         # 返回更新后的参数

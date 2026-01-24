@@ -1,0 +1,70 @@
+# Fashion-MNIST 专用配置文件
+
+server:
+  strategy: FedAvg
+  fraction_fit: 1.0
+  fraction_eval: 1.0
+  num_rounds: 20
+  batch_size: 64
+
+client:
+  num_clients: 10
+  batch_size: 64
+  local_epochs: 3
+
+model:
+  name: FMNIST
+  # 使用model_configs中的默认值
+  optimizer: null
+  learning_rate: null
+  weight_decay: null
+  momentum: null
+
+general:
+  random_seed: 42
+
+backend:
+  client_resources:
+    num_cpus: 2.0
+    num_gpus: 0.0
+
+data:
+  partitioning: iid
+  alpha: 0.5
+
+attack:
+  enabled: false
+  type: null
+  malicious_clients: []
+  malicious_ratio: 0.0
+  params:
+    num_classes: 10
+    mean: 0.0
+    std: 1.0
+    scale_factor: 10.0
+
+# 针对不同模型的特定配置
+model_configs:
+  MNIST:
+    optimizer: adam
+    learning_rate: 0.001
+    weight_decay: 0.0
+    momentum: 0.9
+    batch_size: 64
+    local_epochs: 3
+  
+  FMNIST:
+    optimizer: adam
+    learning_rate: 0.001
+    weight_decay: 0.0
+    momentum: 0.9
+    batch_size: 64
+    local_epochs: 3
+  
+  CIFAR10:
+    optimizer: sgd
+    learning_rate: 0.01
+    weight_decay: 5e-4
+    momentum: 0.9
+    batch_size: 32
+    local_epochs: 5

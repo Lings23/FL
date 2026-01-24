@@ -1,4 +1,9 @@
 # 联邦学习配置文件
+# 
+# 配置说明：
+# - model字段中的null值会自动使用model_configs中对应模型的配置
+# - 如果想覆盖特定参数，将null改为具体值即可
+# - 不同模型使用不同的优化器和超参数以达到最佳效果
 
 server:
   strategy: FedAvg  # 聚合策略: FedAvg, FedMedian, FedTrimmedMean
@@ -14,7 +19,37 @@ client:
 
 model:
   name: CIFAR10  # 模型名称: MNIST, FMNIST, CIFAR10
-  learning_rate: 0.001  # 学习率
+  # 优化器配置 (如果未指定，使用model_configs中的默认值)
+  optimizer: null  # 优化器类型: sgd, adam (null表示使用模型特定配置)
+  learning_rate: null  # 学习率 (null表示使用模型特定配置)
+  weight_decay: null  # 权重衰减
+  momentum: null  # SGD动量
+
+# 针对不同模型的特定配置
+model_configs:
+  MNIST:
+    optimizer: adam
+    learning_rate: 0.001
+    weight_decay: 0.0
+    momentum: 0.9
+    batch_size: 64
+    local_epochs: 3
+  
+  FMNIST:
+    optimizer: adam
+    learning_rate: 0.001
+    weight_decay: 0.0
+    momentum: 0.9
+    batch_size: 64
+    local_epochs: 3
+  
+  CIFAR10:
+    optimizer: sgd
+    learning_rate: 0.01
+    weight_decay: 5e-4
+    momentum: 0.9
+    batch_size: 32
+    local_epochs: 5
 
 general:
   random_seed: 42  # 随机种子

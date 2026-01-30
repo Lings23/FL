@@ -15,17 +15,62 @@ from src.task import test, load_datasets, save_model, save_results
 from src.config import get_config
 
 
-def get_evaluate_fn(model, test_loader):
+# 全局 History 记录器，用于收集训练结果
+class TrainingHistory:
+    """训练历史记录器"""
+    _instance = None
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.reset()
+        return cls._instance
+    
+    def reset(self):
+        """重置历史记录"""
+        self.rounds = []
+        self.losses = []
+        self.accuracies = []
+        self.config_info = {}
+    
+    def add_result(self, round_num: int, loss: float, accuracy: float):
+        """添加一轮结果"""
+        self.rounds.append(round_num)
+        self.losses.append(loss)
+        self.accuracies.append(accuracy)
+    
+    def to_dict(self):
+        """转换为字典"""
+        return {
+            "config": self.config_info,
+            "rounds": self.rounds,
+            "centralized_loss": self.losses,
+            "centralized_accuracy": self.accuracies,
+            "best_accuracy": max(self.accuracies) if self.accuracies else 0.0,
+            "final_accuracy": self.accuracies[-1] if self.accuracies else 0.0,
+            "final_loss": self.losses[-1] if self.losses else 0.0
+        }
+
+
+def get_training_history() -> TrainingHistory:
+    """获取全局训练历史记录器"""
+    return TrainingHistory()
+
+
+def get_evaluate_fn(model, test_loader, num_rounds: int = 10):
     """
     创建服务器端评估函数
     
     Args:
         model: 模型
         test_loader: 测试数据加载器
+        num_rounds: 总轮数，用于在最后一轮保存结果
         
     Returns:
         evaluate_fn: 评估函数
     """
+    history = get_training_history()
+    
     def evaluate(server_round: int, parameters_ndarrays, config):
         """
         在服务器端评估全局模型
@@ -52,9 +97,35 @@ def get_evaluate_fn(model, test_loader):
         print(f"  准确率: {accuracy:.2f}%")
         print(f"  设备: {device}")
         
+        # 记录到 history
+        history.add_result(server_round, loss, accuracy)
+        
+        # 在最后一轮保存结果
+        if server_round == num_rounds:
+            _save_training_history(history)
+        
         return loss, {"centralized_accuracy": accuracy}
     
     return evaluate
+
+
+def _save_training_history(history: TrainingHistory):
+    """保存训练历史到文件"""
+    import json
+    import datetime
+    from pathlib import Path
+    
+    out_dir = Path("outputs")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    model_name = history.config_info.get('model_name', 'results')
+    json_path = out_dir / f"history_{model_name}_{ts}.json"
+    
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(history.to_dict(), f, ensure_ascii=False, indent=2)
+    
+    print(f"\n训练历史已保存: {json_path}")
 
 
 def get_fit_config_fn():
@@ -132,6 +203,22 @@ def get_strategy() -> Strategy:
         pin_memory=False
     )
     
+    # 初始化训练历史记录器
+    num_rounds = config.server['num_rounds']
+    history = get_training_history()
+    history.reset()  # 重置历史记录
+    history.config_info = {
+        "model_name": model_name,
+        "strategy": strategy_name,
+        "num_clients": config.client['num_clients'],
+        "num_rounds": num_rounds,
+        "fraction_fit": config.server['fraction_fit'],
+        "local_epochs": config.client.get('local_epochs', 1),
+        "batch_size": batch_size,
+        "attack_enabled": config.attack.get('enabled', False),
+        "attack_type": config.attack.get('type', None),
+    }
+    
     # 策略参数
     strategy_kwargs = {
         'fraction_fit': config.server['fraction_fit'],
@@ -145,7 +232,7 @@ def get_strategy() -> Strategy:
         ),
         'initial_parameters': ndarrays_to_parameters(get_weights(model)),
         'on_fit_config_fn': get_fit_config_fn(),
-        'evaluate_fn': get_evaluate_fn(model, test_loader),
+        'evaluate_fn': get_evaluate_fn(model, test_loader, num_rounds),
         # 'evaluate_metrics_aggregation_fn': weighted_average,  # 禁用客户端评估聚合
         'model': model,
         'save_path': 'outputs'

@@ -18,7 +18,7 @@ from flwr.simulation import run_simulation
 
 from src.config import init_config
 from src.client_app import get_client_fn
-from src.server_app import get_server_fn
+from src.server_app import get_server_fn, get_training_history
 
 
 def main(config_path: str = "configs/config.yaml"):
@@ -47,57 +47,39 @@ def main(config_path: str = "configs/config.yaml"):
     
     # 运行仿真并保存结果
     try:
-        results = run_simulation(
+        # 注意: run_simulation() 在新版 Flower 中返回 None
+        # 真正的结果通过 TrainingHistory 收集
+        run_simulation(
             server_app=get_server_fn(),
             client_app=get_client_fn(),
             num_supernodes=config.client['num_clients'],
             backend_config=config.backend
         )
 
-        # 尝试以 JSON 保存（若不可序列化则退回为 pickle）
+        # 从 TrainingHistory 获取实际结果
         import json
-        import pickle
         import datetime
-        import numpy as _np
 
-        def _make_serializable(o):
-            # numpy arrays / scalars
-            try:
-                if isinstance(o, _np.ndarray):
-                    return o.tolist()
-                if isinstance(o, _np.generic):
-                    return o.item()
-            except Exception:
-                pass
-            # dict / list
-            if isinstance(o, dict):
-                return {k: _make_serializable(v) for k, v in o.items()}
-            if isinstance(o, (list, tuple)):
-                return [_make_serializable(v) for v in o]
-            # objects with __dict__
-            if hasattr(o, "__dict__"):
-                return _make_serializable(o.__dict__)
-            # fallback to str
-            try:
-                return str(o)
-            except Exception:
-                return None
-
+        history = get_training_history()
+        results = history.to_dict()
+        
         out_dir = Path("outputs")
         out_dir.mkdir(parents=True, exist_ok=True)
         ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         model_name = config.model.get('name', 'results')
         json_path = out_dir / f"results_{model_name}_{ts}.json"
-        pkl_path = out_dir / f"results_{model_name}_{ts}.pkl"
 
-        try:
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(_make_serializable(results), f, ensure_ascii=False, indent=2)
-            print(f"结果已保存: {json_path}")
-        except Exception:
-            with open(pkl_path, "wb") as f:
-                pickle.dump(results, f)
-            print(f"结果已保存（pickle）: {pkl_path}")
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(results, f, ensure_ascii=False, indent=2)
+        print(f"\n结果已保存: {json_path}")
+        
+        # 打印训练摘要
+        if results.get('accuracies') or results.get('centralized_accuracy'):
+            accs = results.get('centralized_accuracy', [])
+            if accs:
+                print(f"\n训练摘要:")
+                print(f"  最终准确率: {accs[-1]:.2f}%")
+                print(f"  最佳准确率: {max(accs):.2f}%")
 
         print("\n" + "=" * 60)
         print("联邦学习仿真完成!")
